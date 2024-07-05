@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FoodTrack</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@1.14.0/dist/full.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.14.0/Sortable.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/resizable@0.9.0/dist/resizable.min.js"></script>
+  <style>
+    .hidden { display: none; }
+    .editable-title { margin-bottom: 0.5rem; }
+    .editable-subcategory { margin-bottom: 0.5rem; }
+    .editable-quantity { font-size: 2.25rem; padding: 0.5rem; }
+    .editable-date, .editable-min-quantity, .editable-weight, .editable-weight-unit { display: inline-block; width: auto; margin-left: 4px; }
+    .toast { padding: 1em; background: green; color: white; border-radius: 5px; }
+    .container { max-width: 90%; margin: 0 auto; }
+    #cardContainer { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; }
+    #chartContainer { height: 60vh; }
+    .card { position: relative; }
+    .color-picker { width: 40px; height: 40px; }
+    .category-chart-card { width: 100%; min-width: 33.33%; height: 50vh; resize: horizontal; overflow: auto; }
+    #secondaryChartsContainer { display: flex; flex-wrap: wrap; gap: 1rem; }
+    .btn-refresh { display: flex; align-items: center; gap: 0.5rem; }
+    .btn-refresh svg { width: 24px; height: 24px; }
+  </style>
+</head>
+<body>
+
+  <div class="navbar bg-base-100">
+    <div class="flex-1">
+      <a class="btn btn-ghost text-xl">FoodTrack</a>
+    </div>
+    <div class="flex-none">
+      <label class="flex cursor-pointer gap-2 items-center">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="5" />
+          <path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4" />
+        </svg>
+        <input type="checkbox" class="toggle theme-controller" />
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+      </label>
+    </div>
+  </div>
+
+  <div class="container mx-auto mt-4">
+    <button id="addItemBtn" class="btn btn-primary mb-4">Add item to Inventory</button>
+    <button id="autoPopulateBtn" class="btn btn-outline btn-primary mb-4 btn-refresh">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-5">
+        <path fill-rule="evenodd" d="M9.664 1.319a.75.75 0 0 1 .672 0 41.059 41.059 0 0 1 8.198 5.424.75.75 0 0 1-.254 1.285 31.372 31.372 0 0 0-7.86 3.83.75.75 0 0 1-.84 0 31.508 31.508 0 0 0-2.08-1.287V9.394c0-.244.116-.463.302-.592a35.504 35.504 0 0 1 3.305-2.033.75.75 0 0 0-.714-1.319 37 37 0 0 0-3.446 2.12A2.216 2.216 0 0 0 6 9.393v.38a31.293 31.293 0 0 0-4.28-1.746.75.75 0 0 1-.254-1.285 41.059 41.059 0 0 1 8.198-5.424ZM6 11.459a29.848 29.848 0 0 0-2.455-1.158 41.029 41.029 0 0 0-.39 3.114.75.75 0 0 0 .419.74c.528.256 1.046.53 1.554.82-.21.324-.455.63-.739.914a.75.75 0 1 0 1.06 1.06c.37-.369.69-.77.96-1.193a26.61 26.61 0 0 1 3.095 2.348.75.75 0 0 0 .992 0 26.547 26.547 0 0 1 5.93-3.95.75.75 0 0 0 .42-.739 41.053 41.053 0 0 0-.39-3.114 29.925 29.925 0 0 0-5.199 2.801 2.25 2.25 0 0 1-2.514 0c-.41-.275-.826-.541-1.25-.797a6.985 6.985 0 0 1-1.084 3.45 26.503 26.503 0 0 0-1.281-.78A5.487 5.487 0 0 0 6 12v-.54Z" clip-rule="evenodd" />
+      </svg>
+      Auto Populate
+    </button>
+
+    <div id="addItemForm" class="hidden bg-base-100 p-4 shadow-md mb-4">
+      <div class="form-control mb-4">
+        <label class="label" for="itemSelect">Select Food Item</label>
+        <select id="itemSelect" class="select select-bordered">
+          <!-- Add 25 food categories as options -->
+          <option>Fruits</option>
+          <option>Vegetables</option>
+          <option>Dairy</option>
+          <option>Meat</option>
+          <option>Fish</option>
+          <option>Grains</option>
+          <option>Nuts</option>
+          <option>Seeds</option>
+          <option>Legumes</option>
+          <option>Spices</option>
+          <option>Herbs</option>
+          <option>Beverages</option>
+          <option>Snacks</option>
+          <option>Frozen Foods</option>
+          <option>Canned Foods</option>
+          <option>Condiments</option>
+          <option>Bakery</option>
+          <option>Confectionery</option>
+          <option>Prepared Meals</option>
+          <option>Oils</option>
+          <option>Soups</option>
+          <option>Pasta</option>
+          <option>Rice</option>
+          <option>Breakfast Cereals</option>
+          <option>Sauces</option>
+        </select>
+      </div>
+      <div class="form-control mb-4">
+        <label class="label" for="subcategoryInput">Subcategory</label>
+        <input id="subcategoryInput" class="input input-bordered" list="defaultSubcategories" />
+        <datalist id="defaultSubcategories">
+          <option value="Fresh">
+          <option value="Organic">
+          <option value="Imported">
+          <option value="Local">
+          <option value="Seasonal">
+          <option value="Frozen">
+          <option value="Canned">
+          <option value="Packaged">
+          <option value="Bulk">
+          <option value="Loose">
+        </datalist>
+      </div>
+      <div class="form-control mb-4">
+        <label class="label" for="quantityInput">Quantity</label>
+        <input id="quantityInput" type="number" class="input input-bordered" min="1" />
+      </div>
+      <div class="form-control mb-4">
+        <label class="label" for="minQuantityInput">Qty Alert</label>
+        <input id="minQuantityInput" type="number" class="input input-bordered" min="0" />
+      </div>
+      <div class="form-control mb-4">
+        <label class="label" for="weightInput">Weight</label>
+        <input id="weightInput" type="number" class="input input-bordered" min="0" />
+        <select id="weightUnitSelect" class="select select-bordered">
+          <option value="kg">kg</option>
+          <option value="g">g</option>
+          <option value="lb">lb</option>
+          <option value="oz">oz</option>
+        </select>
+      </div>
+      <div class="form-control mb-4">
+        <label class="label" for="dateInput">Date</label>
+        <input id="dateInput" type="date" class="input input-bordered" />
+      </div>
+      <div class="form-control mb-4">
+        <label class="label" for="colorPicker">Color</label>
+        <input id="colorPicker" type="color" class="input input-bordered" />
+      </div>
+      <button id="confirmBtn" class="btn btn-primary">Confirm</button>
+    </div>
+
+    <div id="categoryChartContainer" class="mb-4">
+      <div class="card bg-base-100 shadow-md p-4 mb-4">
+        <div class="flex items-center">
+          <select id="categoryChartSelect" class="select select-bordered mr-2">
+            <!-- Add 25 food categories as options -->
+            <option>Fruits</option>
+            <option>Vegetables</option>
+            <option>Dairy</option>
+            <option>Meat</option>
+            <option>Fish</option>
+            <option>Grains</option>
+            <option>Nuts</option>
+            <option>Seeds</option>
+            <option>Legumes</option>
+            <option>Spices</option>
+            <option>Herbs</option>
+            <option>Beverages</option>
+            <option>Snacks</option>
+            <option>Frozen Foods</option>
+            <option>Canned Foods</option>
+            <option>Condiments</option>
+            <option>Bakery</option>
+            <option>Confectionery</option>
+            <option>Prepared Meals</option>
+            <option>Oils</option>
+            <option>Soups</option>
+            <option>Pasta</option>
+            <option>Rice</option>
+            <option>Breakfast Cereals</option>
+            <option>Sauces</option>
+          </select>
+          <button id="addCategoryChartBtn" class="btn btn-outline btn-primary">Add Category Chart</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="chartContainer" class="card bg-base-100 shadow-md p-4 mb-4">
+      <h2 class="text-xl font-bold mb-4">Category Quantity</h2>
+      <div style="height: 60vh;">
+        <canvas id="foodChart"></canvas>
+      </div>
+    </div>
+
+    <div id="secondaryChartsContainer"></div>
+
+    <div id="cardContainer"></div>
+  </div>
+
+  <script type="module">
+    // Import the functions you need from the SDKs you need
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-analytics.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
+
+    // Your web app's Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyDN0o888sLPvBQooN35BnpqESHSDMIDwho",
+      authDomain: "track-399a8.firebaseapp.com",
+      projectId: "track-399a8",
+      storageBucket: "track-399a8.appspot.com",
+      messagingSenderId: "898777575389",
+      appId: "1:898777575389:web:0afbed9ae20f47d19f5034",
+      measurementId: "G-HN5TDRX6EQ"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    document.addEventListener("DOMContentLoaded", function() {
+      const themeSwitch = document.querySelector('.theme-controller');
+      const themeAttribute = 'data-theme';
+      const lightTheme = 'light';
+      const darkTheme = 'dark';
+
+      themeSwitch.addEventListener('change', function() {
+        const theme = themeSwitch.checked ? darkTheme : lightTheme;
+        document.documentElement.setAttribute(themeAttribute, theme);
+        updateChartTheme();
+        updateIconColors();
+        saveUserSettings({ theme });
+      });
+
+      const addItemBtn = document.getElementById('addItemBtn');
+      const addItemForm = document.getElementById('addItemForm');
+      const itemSelect = document.getElementById('itemSelect');
+      const subcategoryInput = document.getElementById('subcategoryInput');
+      const quantityInput = document.getElementById('quantityInput');
+      const minQuantityInput = document.getElementById('minQuantityInput');
+      const weightInput = document.getElementById('weightInput');
+      const weightUnitSelect = document.getElementById('weightUnitSelect');
+      const dateInput = document.getElementById('dateInput');
+      const colorPicker = document.getElementById('colorPicker');
+      const confirmBtn = document.getElementById('confirmBtn');
+      const cardContainer = document.getElementById('cardContainer');
+      const chartContainer = document.getElementById('chartContainer');
+      const addCategoryChartBtn = document.getElementById('addCategoryChartBtn');
+      const categoryChartSelect = document.getElementById('categoryChartSelect');
+      const secondaryChartsContainer = document.getElementById('secondaryChartsContainer');
+      const autoPopulateBtn = document.getElementById('autoPopulateBtn');
+
+      const ctx = document.getElementById('foodChart').getContext('2d');
+      const foodChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: [],
+          datasets: [{
+            label: 'Qty Alert',
+            data: [],
+            backgroundColor: 'rgba(255, 0, 0, 0.6)',
+            stack: 'Stack 0'
+          }, {
+            label: 'Quantity',
+            data: [],
+            backgroundColor: [],
+            stack: 'Stack 0'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              stacked: true
+            },
+            x: {
+              stacked: true
+            }
+          },
+          plugins: {
+            legend: {
+              labels: {
+                color: getComputedStyle(document.documentElement).getPropertyValue('--tw-text-opacity')
+              }
+            }
+          }
+        }
+      });
+
+      addItemBtn.addEventListener('click', function() {
+        addItemForm.classList.toggle('hidden');
+      });
+
+      confirmBtn.addEventListener('click', function() {
+        const selectedItem = itemSelect.value;
+        const subcategory = subcategoryInput.value.trim();
+        const quantity = parseInt(quantityInput.value);
+        const minQuantity = parseInt(minQuantityInput.value) || 0;
+        const weight = parseFloat(weightInput.value) || 0;
+        const weightUnit = weightUnitSelect.value;
+        const date = dateInput.value;
+        const color = colorPicker.value;
+        const categoryKey = `${selectedItem}-${subcategory}`;
+
+        if (selectedItem && quantity) {
+          const existingCard = document.querySelector(`.card[data-category="${categoryKey}"]`);
+          if (existingCard) {
+            const existingQuantityInput = existingCard.querySelector('.editable-quantity');
+            const existingWeightInput = existingCard.querySelector('.editable-weight');
+            const existingQuantity = parseInt(existingQuantityInput.value);
+            const existingWeight = parseFloat(existingWeightInput.value);
+            existingQuantityInput.value = existingQuantity + quantity;
+            existingWeightInput.value = existingWeight + weight;
+
+            // Update the chart data
+            const index = foodChart.data.labels.indexOf(categoryKey);
+            if (index !== -1) {
+              foodChart.data.datasets[1].data[index] += quantity;
+              foodChart.data.datasets[0].data[index] = minQuantity;
+              foodChart.data.datasets[1].backgroundColor[index] = color;
+            }
+          } else {
+            const card = document.createElement('div');
+            card.className = 'card bg-base-100 shadow-md p-4 mb-4';
+            card.setAttribute('data-category', categoryKey);
+            card.style.borderTop = `4px solid ${color}`;
+            card.innerHTML = `
+              <div class="flex justify-between items-center mb-4">
+                <input type="text" value="${selectedItem}" class="input w-full max-w-xs editable-title" readonly />
+                <input type="text" value="${subcategory}" class="input w-full max-w-xs editable-subcategory ml-2" />
+                <button class="btn btn-circle btn-ghost close-btn">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <h1 class="text-3xl">
+                <input type="number" value="${quantity}" class="input editable-quantity" />
+              </h1>
+              <p>Date: <input type="date" value="${date}" class="input editable-date" /></p>
+              <div class="flex items-center">
+                <p>Qty Alert: </p>
+                <input type="number" value="${minQuantity}" class="input editable-min-quantity ml-2" />
+              </div>
+              <div class="flex items-center">
+                <p>Weight: </p>
+                <input type="number" value="${weight}" class="input editable-weight ml-2" /> 
+                <select class="input editable-weight-unit ml-2">
+                  <option value="kg" ${weightUnit === 'kg' ? 'selected' : ''}>kg</option>
+                  <option value="g" ${weightUnit === 'g' ? 'selected' : ''}>g</option>
+                  <option value="lb" ${weightUnit === 'lb' ? 'selected' : ''}>lb</option>
+                  <option value="oz" ${weightUnit === 'oz' ? 'selected' : ''}>oz</option>
+                </select>
+              </div>
+              <div class="flex items-center mt-4">
+                <button class="btn btn-circle btn-ghost color-picker-btn">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+                    <path fill-rule="evenodd" d="M2.25 4.125c0-1.036.84-1.875 1.875-1.875h5.25c1.036 0 1.875.84 1.875 1.875V17.25a4.5 4.5 0 1 1-9 0V4.125Zm4.5 14.25a1.125 1.125 0 1 0 0-2.25 1.125 1.125 0 0 0 0 2.25Z" clip-rule="evenodd" />
+                    <path d="M10.719 21.75h9.156c1.036 0 1.875-.84 1.875-1.875v-5.25c0-1.036-.84-1.875-1.875-1.875h-.14l-8.742 8.743c-.09.089-.18.175-.274.257ZM12.738 17.625l6.474-6.474a1.875 1.875 0 0 0 0-2.651L15.5 4.787a1.875 1.875 0 0 0-2.651 0l-.1.099V17.25c0 .126-.003.251-.01.375Z" />
+                  </svg>
+                </button>
+                <input type="color" class="hidden color-picker" value="${color}" />
+              </div>
+            `;
+
+            card.querySelector('.close-btn').addEventListener('click', function() {
+              card.remove();
+              const index = foodChart.data.labels.indexOf(categoryKey);
+              if (index !== -1) {
+                foodChart.data.labels.splice(index, 1);
+                foodChart.data.datasets[1].data.splice(index, 1);
+                foodChart.data.datasets[0].data.splice(index, 1);
+                foodChart.data.datasets[1].backgroundColor.splice(index, 1);
+                foodChart.update();
+              }
+            });
+
+            card.querySelector('.color-picker-btn').addEventListener('click', function() {
+              const colorPickerInput = this.nextElementSibling;
+              colorPickerInput.click();
+            });
+
+            card.querySelector('.color-picker').addEventListener('input', function() {
+              const newColor = this.value;
+              card.style.borderTop = `4px solid ${newColor}`;
+              const index = foodChart.data.labels.indexOf(categoryKey);
+              if (index !== -1) {
+                foodChart.data.datasets[1].backgroundColor[index] = newColor;
+                foodChart.update();
+              }
+            });
+
+            card.querySelector('.editable-quantity').addEventListener('input', function() {
+              const newQuantity = parseInt(this.value);
+              const index = foodChart.data.labels.indexOf(categoryKey);
+              if (index !== -1) {
+                foodChart.data.datasets[1].data[index] = newQuantity;
+                foodChart.update();
+              }
+            });
+
+            card.querySelector('.editable-min-quantity').addEventListener('input', function() {
+              const newMinQuantity = parseInt(this.value);
+              const index = foodChart.data.labels.indexOf(categoryKey);
+              if (index !== -1) {
+                foodChart.data.datasets[0].data[index] = newMinQuantity;
+                foodChart.update();
+              }
+            });
+
+            card.querySelector('.editable-weight').addEventListener('input', function() {
+              const newWeight = parseFloat(this.value);
+              const index = foodChart.data.labels.indexOf(categoryKey);
+              if (index !== -1) {
+                foodChart.data.datasets[1].data[index] = newWeight;
+                foodChart.update();
+              }
+            });
+
+            cardContainer.appendChild(card);
+
+            // Add new data to the chart
+            foodChart.data.labels.push(categoryKey);
+            foodChart.data.datasets[1].data.push(quantity);
+            foodChart.data.datasets[1].backgroundColor.push(color);
+            foodChart.data.datasets[0].data.push(minQuantity);
+          }
+
+          foodChart.update();
+          addItemForm.classList.add('hidden');
+          showSuccessToast();
+        }
+      });
+
+      addCategoryChartBtn.addEventListener('click', function() {
+        const selectedCategory = categoryChartSelect.value;
+        if (selectedCategory) {
+          const categoryData = foodChart.data.labels.filter(label => label.startsWith(selectedCategory)).map((label, index) => ({
+            label,
+            quantity: foodChart.data.datasets[1].data[index],
+            minQuantity: foodChart.data.datasets[0].data[index],
+            color: foodChart.data.datasets[1].backgroundColor[index]
+          }));
+          if (categoryData.length) {
+            const categoryChartCard = document.createElement('div');
+            categoryChartCard.className = 'category-chart-card card bg-base-100 shadow-md p-4 mb-4 resizable';
+            categoryChartCard.innerHTML = `
+              <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold">${selectedCategory} Quantity</h2>
+                <button class="btn btn-circle btn-ghost close-category-chart">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div style="height: 50vh; min-width: 33.33%;">
+                <canvas class="category-chart"></canvas>
+              </div>
+            `;
+            secondaryChartsContainer.appendChild(categoryChartCard);
+            const categoryCtx = categoryChartCard.querySelector('.category-chart').getContext('2d');
+            new Chart(categoryCtx, {
+              type: 'bar',
+              data: {
+                labels: categoryData.map(data => data.label),
+                datasets: [{
+                  label: 'Qty Alert',
+                  data: categoryData.map(data => data.minQuantity),
+                  backgroundColor: 'rgba(255, 0, 0, 0.6)',
+                  stack: 'Stack 0'
+                }, {
+                  label: 'Quantity',
+                  data: categoryData.map(data => data.quantity),
+                  backgroundColor: categoryData.map(data => data.color),
+                  stack: 'Stack 0'
+                }]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                  y: {
+                    beginAtZero: true,
+                    stacked: true
+                  },
+                  x: {
+                    stacked: true
+                  }
+                },
+                plugins: {
+                  legend: {
+                    labels: {
+                      color: getComputedStyle(document.documentElement).getPropertyValue('--tw-text-opacity')
+                    }
+                  }
+                }
+              }
+            });
+            categoryChartCard.querySelector('.close-category-chart').addEventListener('click', function() {
+              categoryChartCard.remove();
+            });
+
+            // Make the category chart resizable
+            new Resizable(categoryChartCard, {
+              handles: 'e, w'
+            });
+          }
+        }
+      });
+
+      autoPopulateBtn.addEventListener('click', function() {
+        const categories = [
+          { name: 'Fruits', subcategories: ['Apples', 'Bananas', 'Oranges', 'Berries'], quantityRange: [100, 200], weightRange: [20, 50] },
+          { name: 'Vegetables', subcategories: ['Carrots', 'Broccoli', 'Spinach', 'Bell Peppers'], quantityRange: [50, 100], weightRange: [50, 100] },
+          { name: 'Dairy', subcategories: ['Milk', 'Cheese', 'Yogurt', 'Butter'], quantityRange: [10, 20], weightRange: [50, 100] },
+          { name: 'Meat', subcategories: ['Chicken', 'Beef', 'Pork', 'Lamb'], quantityRange: [50, 100], weightRange: [100, 200] }
+        ];
+
+        for (let i = 0; i < 3; i++) {
+          categories.forEach(category => {
+            const subcategory = category.subcategories[Math.floor(Math.random() * category.subcategories.length)];
+            const quantity = Math.floor(Math.random() * (category.quantityRange[1] - category.quantityRange[0] + 1)) + category.quantityRange[0];
+            const weight = Math.floor(Math.random() * (category.weightRange[1] - category.weightRange[0] + 1)) + category.weightRange[0];
+            const minQuantity = Math.floor(Math.random() * 10);
+            const date = new Date().toISOString().split('T')[0];
+            const color = `#${Math.floor(Math.random() * 16777215).toString(16)}`;
+
+            const categoryKey = `${category.name}-${subcategory}`;
+            const existingCard = document.querySelector(`.card[data-category="${categoryKey}"]`);
+            if (existingCard) {
+              const existingQuantityInput = existingCard.querySelector('.editable-quantity');
+              const existingWeightInput = existingCard.querySelector('.editable-weight');
+              const existingQuantity = parseInt(existingQuantityInput.value);
+              const existingWeight = parseFloat(existingWeightInput.value);
+              existingQuantityInput.value = existingQuantity + quantity;
+              existingWeightInput.value = existingWeight + weight;
+
+              // Update the chart data
+              const index = foodChart.data.labels.indexOf(categoryKey);
+              if (index !== -1) {
+                foodChart.data.datasets[1].data[index] += quantity;
+                foodChart.data.datasets[0].data[index] = minQuantity;
+                foodChart.data.datasets[1].backgroundColor[index] = color;
+              }
+            } else {
+              const card = document.createElement('div');
+              card.className = 'card bg-base-100 shadow-md p-4 mb-4';
+              card.setAttribute('data-category', categoryKey);
+              card.style.borderTop = `4px solid ${color}`;
+              card.innerHTML = `
+                <div class="flex justify-between items-center mb-4">
+                  <input type="text" value="${category.name}" class="input w-full max-w-xs editable-title" readonly />
+                  <input type="text" value="${subcategory}" class="input w-full max-w-xs editable-subcategory ml-2" />
+                  <button class="btn btn-circle btn-ghost close-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <h1 class="text-3xl">
+                  <input type="number" value="${quantity}" class="input editable-quantity" />
+                </h1>
+                <p>Date: <input type="date" value="${date}" class="input editable-date" /></p>
+                <div class="flex items-center">
+                  <p>Qty Alert: </p>
+                  <input type="number" value="${minQuantity}" class="input editable-min-quantity ml-2" />
+                </div>
+                <div class="flex items-center">
+                  <p>Weight: </p>
+                  <input type="number" value="${weight}" class="input editable-weight ml-2" /> 
+                  <select class="input editable-weight-unit ml-2">
+                    <option value="kg">kg</option>
+                    <option value="g">g</option>
+                    <option value="lb">lb</option>
+                    <option value="oz">oz</option>
+                  </select>
+                </div>
+                <div class="flex items-center mt-4">
+                  <button class="btn btn-circle btn-ghost color-picker-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+                      <path fill-rule="evenodd" d="M2.25 4.125c0-1.036.84-1.875 1.875-1.875h5.25c1.036 0 1.875.84 1.875 1.875V17.25a4.5 4.5 0 1 1-9 0V4.125Zm4.5 14.25a1.125 1.125 0 1 0 0-2.25 1.125 1.125 0 0 0 0 2.25Z" clip-rule="evenodd" />
+                      <path d="M10.719 21.75h9.156c1.036 0 1.875-.84 1.875-1.875v-5.25c0-1.036-.84-1.875-1.875-1.875h-.14l-8.742 8.743c-.09.089-.18.175-.274.257ZM12.738 17.625l6.474-6.474a1.875 1.875 0 0 0 0-2.651L15.5 4.787a1.875 1.875 0 0 0-2.651 0l-.1.099V17.25c0 .126-.003.251-.01.375Z" />
+                    </svg>
+                  </button>
+                  <input type="color" class="hidden color-picker" value="${color}" />
+                </div>
+              `;
+
+              card.querySelector('.close-btn').addEventListener('click', function() {
+                card.remove();
+                const index = foodChart.data.labels.indexOf(categoryKey);
+                if (index !== -1) {
+                  foodChart.data.labels.splice(index, 1);
+                  foodChart.data.datasets[1].data.splice(index, 1);
+                  foodChart.data.datasets[0].data.splice(index, 1);
+                  foodChart.data.datasets[1].backgroundColor.splice(index, 1);
+                  foodChart.update();
+                }
+              });
+
+              card.querySelector('.color-picker-btn').addEventListener('click', function() {
+                const colorPickerInput = this.nextElementSibling;
+                colorPickerInput.click();
+              });
+
+              card.querySelector('.color-picker').addEventListener('input', function() {
+                const newColor = this.value;
+                card.style.borderTop = `4px solid ${newColor}`;
+                const index = foodChart.data.labels.indexOf(categoryKey);
+                if (index !== -1) {
+                  foodChart.data.datasets[1].backgroundColor[index] = newColor;
+                  foodChart.update();
+                }
+              });
+
+              card.querySelector('.editable-quantity').addEventListener('input', function() {
+                const newQuantity = parseInt(this.value);
+                const index = foodChart.data.labels.indexOf(categoryKey);
+                if (index !== -1) {
+                  foodChart.data.datasets[1].data[index] = newQuantity;
+                  foodChart.update();
+                }
+              });
+
+              card.querySelector('.editable-min-quantity').addEventListener('input', function() {
+                const newMinQuantity = parseInt(this.value);
+                const index = foodChart.data.labels.indexOf(categoryKey);
+                if (index !== -1) {
+                  foodChart.data.datasets[0].data[index] = newMinQuantity;
+                  foodChart.update();
+                }
+              });
+
+              card.querySelector('.editable-weight').addEventListener('input', function() {
+                const newWeight = parseFloat(this.value);
+                const index = foodChart.data.labels.indexOf(categoryKey);
+                if (index !== -1) {
+                  foodChart.data.datasets[1].data[index] = newWeight;
+                  foodChart.update();
+                }
+              });
+
+              cardContainer.appendChild(card);
+
+              // Add new data to the chart
+              foodChart.data.labels.push(categoryKey);
+              foodChart.data.datasets[1].data.push(quantity);
+              foodChart.data.datasets[1].backgroundColor.push(color);
+              foodChart.data.datasets[0].data.push(minQuantity);
+            }
+            foodChart.update();
+          });
+        }
+      });
+
+      function showSuccessToast() {
+        const toast = document.createElement('div');
+        toast.className = 'toast toast-success fixed top-4 right-4';
+        toast.innerText = 'Item added successfully!';
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+          toast.remove();
+        }, 3000);
+      }
+
+      function updateChartTheme() {
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        const textColor = currentTheme === 'dark' ? '#fff' : '#000';
+        foodChart.options.plugins.legend.labels.color = textColor;
+        foodChart.options.scales.y.ticks.color = textColor;
+        foodChart.options.scales.x.ticks.color = textColor;
+        foodChart.update();
+      }
+
+      function updateIconColors() {
+        const icons = document.querySelectorAll('.navbar svg, .theme-controller svg');
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        const strokeColor = currentTheme === 'dark' ? '#fff' : '#000';
+        icons.forEach(icon => {
+          icon.style.stroke = strokeColor;
+        });
+      }
+
+      // Pre-populate date field with today's date
+      const today = new Date().toISOString().split('T')[0];
+      dateInput.value = today;
+
+      // Initialize Sortable for secondary charts
+      new Sortable(secondaryChartsContainer, {
+        animation: 150,
+        ghostClass: 'sortable-ghost'
+      });
+
+      async function saveUserSettings(settings) {
+        const user = auth.currentUser;
+        if (user) {
+          try {
+            await setDoc(doc(db, 'users', user.uid), { settings }, { merge: true });
+            console.log('User settings saved successfully');
+          } catch (error) {
+            console.error('Error saving user settings:', error);
+          }
+        }
+      }
+
+      async function loadUserSettings(uid) {
+        try {
+          const docRef = doc(db, 'users', uid);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            const settings = docSnap.data().settings;
+            if (settings && settings.theme) {
+              const theme = settings.theme;
+              document.documentElement.setAttribute(themeAttribute, theme);
+              themeSwitch.checked = theme === darkTheme;
+              updateChartTheme();
+              updateIconColors();
+            }
+          }
+        } catch (error) {
+          console.error('Error loading user settings:', error);
+        }
+      }
+
+      // Example login function (implement your own authentication)
+      async function login() {
+        const provider = new GoogleAuthProvider();
+        try {
+          const result = await signInWithPopup(auth, provider);
+          const user = result.user;
+          console.log('User signed in:', user);
+          loadUserSettings(user.uid);
+        } catch (error) {
+          console.error('Error signing in:', error);
+        }
+      }
+
+      // Automatically sign in the user (for development purposes)
+      onAuthStateChanged(auth, (user) => {
+        if (user) {
+          loadUserSettings(user.uid);
+        } else {
+          login();
+        }
+      });
+    });
+  </script>
+</body>
+</html>
