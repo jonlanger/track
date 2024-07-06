@@ -723,7 +723,7 @@
         } catch (error) {
           console.error('Error signing in:', error);
         }
-      } */
+      } 
 
       // Automatically sign in the user (for development purposes)
       onAuthStateChanged(auth, (user) => {
@@ -731,7 +731,7 @@
           loadUserSettings(user.uid);
         } else {
           login();
-        }
+        }*/
       });
     });
   </script>
