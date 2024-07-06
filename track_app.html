@@ -693,7 +693,7 @@
         }
       }
 
-      async function loadUserSettings(uid) {
+     /* async function loadUserSettings(uid) {
         try {
           const docRef = doc(db, 'users', uid);
           const docSnap = await getDoc(docRef);
@@ -713,7 +713,7 @@
       }
 
       // Example login function (implement your own authentication)
-    /* async function login() {
+     async function login() {
         const provider = new GoogleAuthProvider();
         try {
           const result = await signInWithPopup(auth, provider);
