@@ -713,7 +713,7 @@
       }
 
       // Example login function (implement your own authentication)
-      async function login() {
+    /* async function login() {
         const provider = new GoogleAuthProvider();
         try {
           const result = await signInWithPopup(auth, provider);
@@ -723,7 +723,7 @@
         } catch (error) {
           console.error('Error signing in:', error);
         }
-      }
+      } */
 
       // Automatically sign in the user (for development purposes)
       onAuthStateChanged(auth, (user) => {
