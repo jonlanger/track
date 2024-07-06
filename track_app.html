@@ -182,13 +182,9 @@
   </div>
 
   <script type="module">
-    // Import the functions you need from the SDKs you need
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-app.js";
-    import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-analytics.js";
-    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-auth.js";
     import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
 
-    // Your web app's Firebase configuration
     const firebaseConfig = {
       apiKey: "AIzaSyDN0o888sLPvBQooN35BnpqESHSDMIDwho",
       authDomain: "track-399a8.firebaseapp.com",
@@ -199,10 +195,7 @@
       measurementId: "G-HN5TDRX6EQ"
     };
 
-    // Initialize Firebase
     const app = initializeApp(firebaseConfig);
-    const analytics = getAnalytics(app);
-    const auth = getAuth(app);
     const db = getFirestore(app);
 
     document.addEventListener("DOMContentLoaded", function() {
@@ -682,20 +675,18 @@
       });
 
       async function saveUserSettings(settings) {
-        const user = auth.currentUser;
-        if (user) {
-          try {
-            await setDoc(doc(db, 'users', user.uid), { settings }, { merge: true });
-            console.log('User settings saved successfully');
-          } catch (error) {
-            console.error('Error saving user settings:', error);
-          }
+        // Save user settings if needed
+        try {
+          await setDoc(doc(db, 'user-settings', 'default'), { settings }, { merge: true });
+          console.log('Settings saved successfully');
+        } catch (error) {
+          console.error('Error saving settings:', error);
         }
       }
 
-      async function loadUserSettings(uid) {
+      async function loadUserSettings() {
         try {
-          const docRef = doc(db, 'users', uid);
+          const docRef = doc(db, 'user-settings', 'default');
           const docSnap = await getDoc(docRef);
           if (docSnap.exists()) {
             const settings = docSnap.data().settings;
@@ -708,31 +699,11 @@
             }
           }
         } catch (error) {
-          console.error('Error loading user settings:', error);
+          console.error('Error loading settings:', error);
         }
       }
 
-      // Example login function (implement your own authentication)
-    /* async function login() {
-        const provider = new GoogleAuthProvider();
-        try {
-          const result = await signInWithPopup(auth, provider);
-          const user = result.user;
-          console.log('User signed in:', user);
-          loadUserSettings(user.uid);
-        } catch (error) {
-          console.error('Error signing in:', error);
-        }
-      } 
-
-      // Automatically sign in the user (for development purposes)
-      onAuthStateChanged(auth, (user) => {
-        if (user) {
-          loadUserSettings(user.uid);
-        } else {
-          login();
-        }*/
-      });
+      loadUserSettings();
     });
   </script>
 </body>
